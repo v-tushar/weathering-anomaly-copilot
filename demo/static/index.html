@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weathering chamber - anomaly detection + diagnostic copilot</title>
+<style>
+  :root{
+    --bg:#0a0f1a; --panel:#111a2b; --panel2:#0d1524; --line:#1e2b45;
+    --fg:#e6edf7; --muted:#8fa3bf; --accent:#38bdf8; --accent2:#a78bfa;
+    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --spike:#e11d48; --control:#f59e0b; --lamp:#7c3aed; --seal:#0891b2;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  a{color:var(--accent)}
+  .wrap{max-width:1680px;margin:0 auto;padding:18px 20px 60px}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13px}
+  .badge{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel);color:var(--muted);white-space:nowrap}
+  .badge.warnb{border-color:#5b3d12;background:#2a1d08;color:#fbbf24}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;margin-top:14px}
+  .panel h2{font-size:13px;margin:0 0 10px;font-weight:600;color:var(--fg);
+    text-transform:uppercase;letter-spacing:.06em}
+  .panel h2 .hint{text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400;
+    font-size:12px;margin-left:8px}
+  /* controls */
+  .controls{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  input[type=number],select,input[type=text]{background:var(--panel2);color:var(--fg);
+    border:1px solid var(--line);border-radius:6px;padding:7px 9px;font:inherit;min-width:90px}
+  input[type=range]{accent-color:var(--accent);width:150px}
+  button{background:var(--accent);color:#06121e;border:0;border-radius:6px;padding:9px 16px;
+    font:inherit;font-weight:650;cursor:pointer}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.45;cursor:not-allowed;filter:none}
+  button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:500}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--muted);cursor:pointer;user-select:none}
+  .chip.on{color:var(--fg);border-color:currentColor}
+  .chip.on[data-f=sensor_spike]{color:var(--spike)}
+  .chip.on[data-f=control_fault]{color:var(--control)}
+  .chip.on[data-f=lamp_degradation]{color:var(--lamp)}
+  .chip.on[data-f=seal_leak]{color:var(--seal)}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer}
+  .toggle input{accent-color:var(--accent);width:15px;height:15px}
+  /* layout */
+  .grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(430px,1fr);gap:14px;
+    align-items:start}
+  @media (max-width:1180px){.grid{grid-template-columns:1fr}}
+  /* charts */
+  .chart{width:100%;display:block}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;
+    vertical-align:-1px;opacity:.55}
+  /* tables */
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  td.num{font-family:var(--mono);text-align:right}
+  tr.hero td{background:#1a1230}
+  .win{color:var(--ok);font-weight:650}
+  .lose{color:var(--bad)}
+  .miss{color:var(--bad);font-weight:650}
+  /* alert list */
+  .alerts{display:flex;flex-direction:column;gap:6px;max-height:250px;overflow:auto}
+  .alert{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--panel2);border:1px solid var(--line);border-left-width:3px;
+    border-radius:6px;padding:8px 11px;cursor:pointer}
+  .alert:hover{border-color:var(--accent)}
+  .alert.sel{border-color:var(--accent);background:#0f2233}
+  .alert .ch{font-family:var(--mono);font-size:12.5px}
+  .alert .meta{font-size:11.5px;color:var(--muted)}
+  /* copilot trace */
+  .trace{display:flex;flex-direction:column;gap:7px;margin-top:10px;max-height:330px;overflow:auto;
+    padding-right:4px}
+  .ev{border:1px solid var(--line);border-radius:7px;padding:8px 11px;background:var(--panel2);
+    font-size:12.5px;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  .ev .k{font-family:var(--mono);color:var(--accent);font-size:12px}
+  .ev.tool .k{color:var(--accent2)}
+  .ev.guard{border-color:#2f4f33}
+  .ev.fail{border-color:#5b2020;background:#1e0f10}
+  .ev pre{margin:6px 0 0;font-family:var(--mono);font-size:11.5px;color:var(--muted);
+    white-space:pre-wrap;word-break:break-word;max-height:150px;overflow:auto}
+  details summary{cursor:pointer;color:var(--muted);font-size:11.5px;margin-top:5px}
+  .spinner{display:inline-block;width:11px;height:11px;border:2px solid var(--line);
+    border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+    vertical-align:-1px;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* diagnosis */
+  .verdict{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .pill{font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--line);
+    background:var(--panel2);font-family:var(--mono)}
+  .pill b{font-family:system-ui,sans-serif;font-weight:600;color:var(--muted);margin-right:6px;
+    font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .pill.ok{border-color:#1f5132;background:#0d1f14;color:#86efac}
+  .pill.warn{border-color:#5b3d12;background:#20160a;color:#fcd34d}
+  .pill.bad{border-color:#5b2020;background:#1e0f10;color:#fca5a5}
+  .dg h4{margin:12px 0 5px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);font-weight:600}
+  .dg ul{margin:0;padding-left:18px}
+  .dg li{margin:3px 0}
+  .dg .summary{background:var(--panel2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;
+    padding:10px 12px;margin:0}
+  .cite{font-family:var(--mono);font-size:11.5px;color:var(--accent2)}
+  .zbars{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+  .zrow{display:grid;grid-template-columns:130px 1fr 52px;gap:8px;align-items:center;font-size:12px}
+  .zrow .bar{height:9px;background:var(--panel2);border-radius:3px;overflow:hidden}
+  .zrow .bar i{display:block;height:100%;background:var(--accent)}
+  .zrow.hot .bar i{background:var(--bad)}
+  .zrow .v{font-family:var(--mono);text-align:right;color:var(--muted)}
+  .zhead{margin:2px 0 4px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--muted);font-weight:600}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  .err{color:#fca5a5;font-family:var(--mono);font-size:12px;white-space:pre-wrap}
+  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);
+    padding-top:14px}
+  .mdtable table{margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Weathering chamber &mdash; anomaly detection + diagnostic copilot</h1>
+    <span class="badge">synthetic data &middot; fictional X&#8209;100 manual</span>
+    <span class="badge" id="providerBadge">&nbsp;</span>
+    <span class="sub" id="bootMsg">starting&hellip;</span>
+  </header>
+
+  <!-- ACT 1 -------------------------------------------------------------- -->
+  <div class="panel">
+    <h2>1 &middot; Simulate a 30-day test run
+      <span class="hint">faults are injected with known ground truth, then the detectors see the telemetry cold</span></h2>
+    <div class="controls">
+      <div class="field">
+        <label for="seed">Run seed</label>
+        <input type="number" id="seed" value="3001" step="1">
+      </div>
+      <div class="field">
+        <label>Inject faults</label>
+        <div class="chips" id="faultChips"></div>
+      </div>
+      <div class="field">
+        <label for="noise">Sensor noise <span id="noiseVal" class="muted">1.0&times;</span></label>
+        <input type="range" id="noise" min="1" max="2" step="0.1" value="1">
+      </div>
+      <button id="runBtn">Run simulation</button>
+      <button class="ghost" id="randBtn">Random seed</button>
+      <span class="sub" id="runMsg"></span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: charts + comparison -->
+    <div>
+      <div class="panel">
+        <h2>Telemetry &amp; alerts
+          <span class="hint">steady-state light-phase readings; shaded = injected fault; tick = alert fires</span></h2>
+        <div id="charts"><p class="muted small">Run a simulation to see the telemetry.</p></div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div class="panel">
+        <h2>2 &middot; Time to detect, this run
+          <span class="hint">hours from fault onset to the first alert</span></h2>
+        <div id="cmp"><p class="muted small">&mdash;</p></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: copilot -->
+    <div>
+      <div class="panel">
+        <h2>Alerts from the shipped detector
+          <span class="hint">residual&#8209;z + CUSUM &middot; pick one to investigate</span></h2>
+        <div class="alerts" id="alertList"><p class="muted small">&mdash;</p></div>
+      </div>
+
+      <div class="panel">
+        <h2>3 &middot; Diagnostic copilot</h2>
+        <div class="controls" style="gap:14px">
+          <div class="field">
+            <label for="provider">Model provider</label>
+            <select id="provider"></select>
+          </div>
+          <div class="field">
+            <label for="model">Model <span class="muted">(optional)</span></label>
+            <input type="text" id="model" placeholder="provider default" style="min-width:150px">
+          </div>
+          <label class="toggle" title="Attach a malicious operator note that tells the AI to report no fault">
+            <input type="checkbox" id="inject"> prompt injection
+          </label>
+          <label class="toggle" title="Input-side filter that redacts instruction-like text before the model sees it">
+            <input type="checkbox" id="redact" checked> input filter
+          </label>
+          <button id="diagBtn" disabled>Investigate alert</button>
+        </div>
+        <div id="copilot"><p class="muted small" style="margin-top:12px">
+          Select an alert, then investigate.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- benchmark ---------------------------------------------------------- -->
+  <div class="panel">
+    <h2>Held-out benchmark
+      <span class="hint">50 faulty + 20 clean 30-day runs, seeds never used for fitting or tuning</span></h2>
+    <details><summary class="muted small">show full results table (outputs/results.md)</summary>
+      <div class="mdtable" id="bench"></div>
+    </details>
+  </div>
+
+  <footer>
+    All telemetry is generated by <code>weathering_ad/simulator.py</code>. The troubleshooting
+    guide is fictional. No Atlas or customer data is used anywhere in this project.
+    The copilot is advisory: its tools are read-only and it cannot operate a chamber.
+  </footer>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const FCOLOR = {sensor_spike:"#e11d48", control_fault:"#f59e0b",
+                lamp_degradation:"#7c3aed", seal_leak:"#0891b2"};
+const CHART_PANELS = [["irradiance","Irradiance @340nm  (W/m²)"],
+                      ["lamp_power_pct","Lamp drive  (%)"],
+                      ["chamber_air_c","Chamber air  (°C)"],
+                      ["rh_pct","RH  (%)"]];
+const DETS = ["static_threshold","residual_z","iforest_cusum"];
+const DET_LABEL = {static_threshold:"Static setpoint alarm (today)",
+                   residual_z:"Residual z + CUSUM (shipped)",
+                   iforest_cusum:"Isolation Forest (rejected)"};
+const SHORT = {static_threshold:"static alarm", residual_z:"residual z", iforest_cusum:"iForest"};
+
+let META = null, RUN = null, SEL = null, ES = null;
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- boot ---------- */
+async function boot(){
+  try{
+    META = await (await fetch("/api/meta")).json();
+  }catch(e){ $("#bootMsg").textContent = "server not reachable"; return; }
+
+  if (!$("#faultChips").children.length){
+    $("#faultChips").innerHTML = META.faults.map(f =>
+      `<span class="chip on" data-f="${f}">${f.replace(/_/g," ")}</span>`).join("");
+    $("#faultChips").onclick = e => {
+      if (e.target.classList.contains("chip")) e.target.classList.toggle("on");
+    };
+    const sel = $("#provider");
+    sel.innerHTML = META.providers.map(p =>
+      `<option value="${p.id}"${p.available ? "" : " disabled"}>${esc(p.label)}` +
+      `${p.available ? "" : "  — set " + p.env}</option>`).join("");
+    const live = META.providers.find(p => p.id !== "scripted" && p.available);
+    sel.value = live ? live.id : "scripted";
+    sel.onchange = paintProviderBadge;
+    paintProviderBadge();
+    if (META.benchmark) $("#bench").innerHTML = renderMarkdown(META.benchmark);
+  }
+
+  if (!META.ready){ $("#bootMsg").textContent = "fitting detectors…"; setTimeout(boot, 1500); return; }
+  $("#bootMsg").textContent = "";
+  run();
+}
+
+function paintProviderBadge(){
+  const p = META.providers.find(x => x.id === $("#provider").value);
+  const b = $("#providerBadge");
+  if (p && p.id === "scripted"){
+    b.className = "badge warnb";
+    b.textContent = "offline stand-in — a rule policy, not an LLM";
+  } else {
+    b.className = "badge";
+    b.textContent = "live model: " + (p ? p.label : "?");
+  }
+}
+
+/* ---------- act 1: simulate ---------- */
+function chosenFaults(){
+  return [...document.querySelectorAll("#faultChips .chip.on")].map(c => c.dataset.f);
+}
+
+async function run(){
+  const btn = $("#runBtn");
+  btn.disabled = true; $("#runMsg").textContent = "simulating + scoring…";
+  const q = new URLSearchParams({seed: $("#seed").value, faults: chosenFaults().join(","),
+                                noise: $("#noise").value});
+  try{
+    RUN = await (await fetch("/api/run?" + q)).json();
+  }catch(e){
+    $("#runMsg").textContent = "failed: " + e; btn.disabled = false; return;
+  }
+  SEL = null; $("#diagBtn").disabled = true;
+  $("#copilot").innerHTML = '<p class="muted small" style="margin-top:12px">Select an alert, then investigate.</p>';
+  drawCharts(); drawCompare(); drawAlerts();
+  $("#runMsg").textContent = `${RUN.days} days · ${RUN.n_samples} samples · ` +
+    `${RUN.truth.length} injected fault(s)`;
+  btn.disabled = false;
+}
+
+/* ---------- charts ---------- */
+const W = 1000, ML = 62, MR = 14;
+function xScale(d){ return ML + (d / RUN.days) * (W - ML - MR); }
+function fmt(v){
+  const a = Math.abs(v);
+  return a < 1 ? v.toFixed(3) : a < 100 ? v.toFixed(1) : v.toFixed(0);
+}
+
+function faultBands(top, height){
+  return RUN.truth.map(f => {
+    const x1 = xScale(f.day_start), x2 = Math.max(xScale(f.day_end), x1 + 1.5);
+    return `<rect x="${x1.toFixed(1)}" y="${top}" width="${(x2 - x1).toFixed(1)}" ` +
+           `height="${height}" fill="${FCOLOR[f.type]}" opacity=".16"/>`;
+  }).join("");
+}
+
+function chartSVG(key, label, H){
+  const ys = RUN.series[key], xs = RUN.series.day;
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  if (hi - lo < 1e-9){ hi += 1; lo -= 1; }
+  const pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+  const TOP = 10, BOT = H - 14;
+  const y = v => BOT - ((v - lo) / (hi - lo)) * (BOT - TOP);
+
+  let d = "";
+  for (let i = 0; i < xs.length; i++)
+    d += (i ? "L" : "M") + xScale(xs[i]).toFixed(1) + " " + y(ys[i]).toFixed(1);
+
+  let dots = "";
+  if (key === "irradiance")
+    for (const s of RUN.spikes)
+      dots += `<circle cx="${xScale(s.day).toFixed(1)}" cy="${y(s.v).toFixed(1)}" r="2.6" ` +
+              `fill="${FCOLOR.sensor_spike}"/>`;
+
+  const ticks = [lo + (hi - lo) * 0.12, hi - (hi - lo) * 0.12].map(v =>
+    `<line x1="${ML}" x2="${W - MR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" ` +
+    `stroke="#1e2b45" stroke-width="1"/>` +
+    `<text x="${ML - 7}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" ` +
+    `fill="#8fa3bf" font-family="ui-monospace,monospace">${fmt(v)}</text>`).join("");
+
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">
+    ${faultBands(TOP, BOT - TOP)}${ticks}
+    <text x="4" y="14" font-size="10.5" fill="#e6edf7" font-weight="600">${esc(label)}</text>
+    <path d="${d}" fill="none" stroke="#7dd3fc" stroke-width="1.1" stroke-linejoin="round"/>
+    ${dots}</svg>`;
+}
+
+function laneSVG(){
+  const ROW = 22, TOP = 12, H = ROW * DETS.length + 30;
+  let rows = "";
+  DETS.forEach((name, i) => {
+    const yy = TOP + 11 + i * ROW;
+    rows += `<text x="4" y="${yy + 3.5}" font-size="10" fill="#8fa3bf">${esc(SHORT[name])}</text>` +
+            `<line x1="${ML}" x2="${W - MR}" y1="${yy}" y2="${yy}" stroke="#16223a" stroke-width="1"/>`;
+    for (const a of RUN.detectors[name].alerts){
+      const x1 = xScale(a.day_start), x2 = Math.max(xScale(a.day_end), x1 + 2);
+      const col = a.matched_fault ? "#e2e8f0" : "#ef4444";
+      rows += `<line x1="${x1.toFixed(1)}" x2="${x2.toFixed(1)}" y1="${yy}" y2="${yy}" ` +
+              `stroke="${col}" stroke-width="7" opacity=".85"/>` +
+              `<line x1="${x1.toFixed(1)}" x2="${x1.toFixed(1)}" y1="${yy - 8}" y2="${yy + 8}" ` +
+              `stroke="#f43f5e" stroke-width="2"/>`;
+    }
+  });
+  let axis = "";
+  for (let d = 0; d <= RUN.days; d += 5)
+    axis += `<text x="${xScale(d).toFixed(1)}" y="${H - 3}" font-size="10" fill="#8fa3bf" ` +
+            `text-anchor="middle" font-family="ui-monospace,monospace">d${d}</text>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${faultBands(TOP, ROW * DETS.length)}${rows}${axis}</svg>`;
+}
+
+function drawCharts(){
+  $("#charts").innerHTML = CHART_PANELS.map(([k, l]) => chartSVG(k, l, 112)).join("") + laneSVG();
+  $("#legend").innerHTML = RUN.truth.map(f =>
+      `<span><i style="background:${FCOLOR[f.type]}"></i>${f.type.replace(/_/g," ")} ` +
+      `<span class="muted">from day ${f.day_start.toFixed(1)}</span></span>`).join("")
+    + `<span><i style="background:#f43f5e;opacity:1"></i>alert fires</span>`
+    + `<span><i style="background:#ef4444;opacity:1"></i>false alarm</span>`;
+}
+
+/* ---------- act 2: comparison table ---------- */
+function faRow(){
+  return `<p class="small muted" style="margin:10px 0 0">False alarms this run: ` +
+    DETS.map(d => `${SHORT[d]} <b class="${RUN.detectors[d].false_alarms ? "lose" : "win"}">` +
+      `${RUN.detectors[d].false_alarms}</b>`).join(" &middot; ") + `</p>`;
+}
+
+function drawCompare(){
+  if (!RUN.truth.length){
+    $("#cmp").innerHTML = `<p class="small muted">No faults injected &mdash; this run tests the
+      false-alarm rate. Any alert below is a false alarm.</p>` + faRow();
+    return;
+  }
+  const best = {};
+  for (const f of RUN.truth){
+    const vals = DETS.map(d => RUN.detectors[d].ttd_h[f.type]).filter(v => v != null);
+    best[f.type] = vals.length ? Math.min(...vals) : null;
+  }
+  let h = `<table><thead><tr><th>Injected fault</th>` +
+    DETS.map(d => `<th style="text-align:right">${esc(DET_LABEL[d])}</th>`).join("") +
+    `</tr></thead><tbody>`;
+  for (const f of RUN.truth){
+    h += `<tr${f.type === "lamp_degradation" ? ' class="hero"' : ""}>` +
+         `<td>${f.type.replace(/_/g," ")}</td>`;
+    for (const d of DETS){
+      const v = RUN.detectors[d].ttd_h[f.type];
+      h += v == null ? `<td class="num miss">missed</td>`
+                     : `<td class="num ${v === best[f.type] ? "win" : ""}">${v.toFixed(1)} h</td>`;
+    }
+    h += `</tr>`;
+  }
+  h += `</tbody></table>` + faRow();
+  if (RUN.truth.some(f => f.type === "lamp_degradation"))
+    h += `<p class="small muted" style="margin:10px 0 0">Closed-loop control holds irradiance at
+      setpoint while the lamp ages, so a setpoint alarm sees nothing until the lamp maxes out.
+      Watching lamp drive against this lamp's own normal aging rate catches it in hours.</p>`;
+  $("#cmp").innerHTML = h;
+}
+
+/* ---------- alert list ---------- */
+function drawAlerts(){
+  const alerts = RUN.detectors.residual_z.alerts;
+  if (!alerts.length){
+    $("#alertList").innerHTML = '<p class="muted small">No alerts on this run.</p>';
+    return;
+  }
+  $("#alertList").innerHTML = alerts.map((a, i) => {
+    const col = a.matched_fault ? FCOLOR[a.matched_fault] : "#ef4444";
+    const tag = a.matched_fault ? `${a.matched_fault.replace(/_/g," ")} · +${a.ttd_h}h`
+                                : "no matching fault (false alarm)";
+    return `<div class="alert" data-i="${i}" style="border-left-color:${col}">
+      <span class="ch">${esc(a.channel)}</span>
+      <span class="meta">day ${a.day_start.toFixed(1)} · ${esc(tag)}</span></div>`;
+  }).join("");
+  $("#alertList").onclick = e => {
+    const el = e.target.closest(".alert"); if (!el) return;
+    document.querySelectorAll(".alert").forEach(x => x.classList.remove("sel"));
+    el.classList.add("sel");
+    SEL = alerts[+el.dataset.i];
+    $("#diagBtn").disabled = false;
+  };
+}
+
+/* ---------- act 3: copilot ---------- */
+function diagnose(){
+  if (!SEL) return;
+  if (ES){ ES.close(); ES = null; }
+  const q = new URLSearchParams({
+    seed: RUN.seed, start: SEL.start, end: SEL.end, channel: SEL.channel,
+    faults: chosenFaults().join(","), noise: RUN.noise,
+    provider: $("#provider").value, inject: $("#inject").checked,
+    redact: $("#redact").checked});
+  if ($("#model").value.trim()) q.set("model", $("#model").value.trim());
+
+  $("#diagBtn").disabled = true;
+  const gt = SEL.matched_fault ? SEL.matched_fault.replace(/_/g," ") : "no fault (false alarm)";
+  $("#copilot").innerHTML =
+    `<div class="verdict">
+       <span class="pill"><b>ground truth</b>${esc(gt)}</span>
+       <span class="pill" id="rulePill"><b>rule baseline</b>…</span>
+       <span class="pill" id="llmPill"><b>copilot</b><span class="spinner"></span>working</span>
+     </div>
+     <div id="zbars"></div>
+     <div class="trace" id="trace"></div>
+     <div class="dg" id="dg"></div>`;
+
+  ES = new EventSource("/api/diagnose?" + q);
+  ES.onmessage = e => handle(JSON.parse(e.data));
+  ES.onerror = () => {
+    // EventSource retries by default; closing prevents a second (billable) run.
+    if (ES){ ES.close(); ES = null; }
+    $("#diagBtn").disabled = false;
+    addEv("fail", "connection",
+      "The stream closed before the agent finished. Is the server still running?");
+  };
+}
+
+function addEv(cls, k, body, raw){
+  const t = $("#trace"); if (!t) return;
+  const d = document.createElement("div");
+  d.className = "ev " + cls;
+  d.innerHTML = `<span class="k">${esc(k)}</span> ${body}` +
+    (raw ? `<details><summary>raw</summary><pre>${esc(raw)}</pre></details>` : "");
+  t.appendChild(d); t.scrollTop = t.scrollHeight;
+}
+
+function handle(ev){
+  if (ev.type === "context"){
+    $("#rulePill").innerHTML = `<b>rule baseline</b>${esc(ev.rule_baseline)}`;
+    drawZBars(ev.context);
+    addEv("", "alert context", `${Object.keys(ev.context.channels).length} channels summarised ` +
+      `for the model — not the raw ${RUN.n_samples} rows`);
+  }
+  else if (ev.type === "thinking"){
+    addEv("pending", `step ${ev.step}`, `<span class="spinner"></span>model deciding what to do next`);
+  }
+  else if (ev.type === "turn"){
+    const t = $("#trace");
+    if (t && t.lastChild && t.lastChild.classList.contains("pending")) t.removeChild(t.lastChild);
+    const tools = ev.tool_calls.length ? `calls <b>${ev.tool_calls.map(esc).join(", ")}</b>`
+                                       : "no tool call";
+    addEv("", `step ${ev.step}`, `${tools} <span class="muted">· ${ev.input_tokens}+` +
+      `${ev.output_tokens} tok</span>` +
+      (ev.text ? `<div class="muted" style="margin-top:5px">${esc(ev.text.slice(0, 400))}</div>` : ""));
+  }
+  else if (ev.type === "tool"){
+    addEv("tool", ev.name, `<span class="muted">${esc(JSON.stringify(ev.args))}</span>`, ev.result);
+  }
+  else if (ev.type === "guardrail"){
+    const pass = !ev.violations.length;
+    addEv("guard" + (pass ? "" : " fail"), "guardrails",
+      pass ? `<b style="color:#86efac">passed</b> · schema, citations, numeric grounding, telemetry cross-check`
+           : `<b style="color:#fca5a5">${ev.violations.length} violation(s)</b>` +
+             (ev.will_retry ? " — sent back for one retry" : " — escalating to human review") +
+             `<ul style="margin:6px 0 0;padding-left:18px">` +
+             ev.violations.map(v => `<li>${esc(v)}</li>`).join("") + `</ul>`);
+  }
+  else if (ev.type === "done"){
+    if (ES){ ES.close(); ES = null; }
+    $("#diagBtn").disabled = false;
+    renderDone(ev);
+  }
+}
+
+function drawZBars(ctx){
+  const ch = ctx.channels;
+  const max = Math.max(5, ...Object.values(ch).map(c => c.peak_abs_z_during_alert || 0));
+  $("#zbars").innerHTML = `<div class="zhead">Peak deviation during alert (|z|)</div><div class="zbars">` +
+    Object.entries(ch).map(([k, c]) => {
+      const z = c.peak_abs_z_during_alert || 0;
+      return `<div class="zrow ${z > 5 ? "hot" : ""}"><span class="muted">${esc(k)}</span>
+        <span class="bar"><i style="width:${Math.min(100, z / max * 100).toFixed(1)}%"></i></span>
+        <span class="v">${z.toFixed(1)}</span></div>`;
+    }).join("") + `</div>`;
+}
+
+function renderDone(ev){
+  const S = {ok:["ok","passed guardrails first try"],
+             ok_after_retry:["warn","passed after one self-correction"],
+             needs_human_review:["bad","escalated to human review"],
+             error:["bad","error"]}[ev.status] || ["bad", ev.status];
+  const d = ev.diagnosis;
+  const pill = $("#llmPill");
+  if (pill) pill.outerHTML = `<span class="pill ${S[0]}"><b>copilot</b>` +
+    `${esc(d ? d.likely_cause : ev.status)}</span>`;
+
+  let h = `<div class="verdict" style="margin-top:12px">
+    <span class="pill ${S[0]}"><b>status</b>${esc(ev.status)} — ${esc(S[1])}</span>
+    <span class="pill"><b>steps</b>${ev.steps}/8</span>
+    <span class="pill"><b>tools</b>${ev.tool_calls.map(c => esc(c.tool)).join(" → ") || "—"}</span>
+    <span class="pill"><b>latency</b>${ev.latency_s}s</span>
+    <span class="pill"><b>tokens</b>${ev.input_tokens + ev.output_tokens}</span></div>`;
+
+  if (ev.injection_seen)
+    h += `<p class="pill warn" style="display:block;margin:0 0 10px">Instruction-like text was found
+      in retrieved content or an operator note, and was redacted before the model saw it.</p>`;
+  if (ev.error) h += `<p class="err">${esc(ev.error)}</p>`;
+
+  if (d){
+    h += `<p class="summary">${esc(d.summary)}</p>
+      <h4>Likely cause</h4><p style="margin:0"><span class="cite">${esc(d.likely_cause)}</span>
+        <span class="muted">(${esc(d.confidence)} confidence)</span></p>
+      <h4>Evidence</h4><ul>${d.evidence.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <h4>Recommended actions</h4><ul>${d.recommended_actions.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <h4>Test validity</h4><p style="margin:0">${esc(d.test_validity_impact)}</p>
+      <h4>Sources</h4><p style="margin:0" class="cite">${d.citations.map(esc).join(", ") || "—"}</p>`;
+  }
+  if (ev.violations && ev.violations.length)
+    h += `<h4 style="color:#fca5a5">Unresolved guardrail violations</h4><ul>` +
+      ev.violations.map(v => `<li>${esc(v)}</li>`).join("") + `</ul>
+      <p class="small muted">Because these did not clear, the diagnosis is marked
+      <b>needs_human_review</b> and would not be shown to an operator as trustworthy.</p>`;
+  $("#dg").innerHTML = h;
+}
+
+/* ---------- tiny markdown table renderer (benchmark panel) ---------- */
+function renderMarkdown(md){
+  const out = [];
+  let tbl = null;
+  for (const raw of md.split("\n")){
+    const line = raw.trim();
+    if (line.startsWith("|")){
+      const cells = line.slice(1, -1).split("|").map(c => c.trim());
+      if (cells.every(c => /^:?-+:?$/.test(c))) continue;
+      if (!tbl) tbl = "<table><thead><tr>" + cells.map(c => `<th>${esc(c)}</th>`).join("") +
+                      "</tr></thead><tbody>";
+      else tbl += "<tr>" + cells.map(c => `<td>${esc(c)}</td>`).join("") + "</tr>";
+      continue;
+    }
+    if (tbl){ out.push(tbl + "</tbody></table>"); tbl = null; }
+    if (line.startsWith("## ")) out.push(`<h4>${esc(line.slice(3))}</h4>`);
+    else if (line) out.push(`<p class="small muted">${esc(line)}</p>`);
+  }
+  if (tbl) out.push(tbl + "</tbody></table>");
+  return out.join("");
+}
+
+/* ---------- wiring ---------- */
+$("#runBtn").onclick = run;
+$("#randBtn").onclick = () => { $("#seed").value = 3000 + Math.floor(Math.random() * 1000); run(); };
+$("#diagBtn").onclick = diagnose;
+$("#noise").oninput = e => { $("#noiseVal").textContent = (+e.target.value).toFixed(1) + "×"; };
+boot();
+</script>
+</body>
+</html>

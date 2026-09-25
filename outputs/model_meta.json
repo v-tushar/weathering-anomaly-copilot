@@ -1,0 +1,23 @@
+{
+  "model": "residual_z",
+  "calibration_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "cusum_h": {
+    "lamp_power_pct": 5.075261126659038,
+    "irradiance": 5.0
+  },
+  "normal_lamp_aging_pct_per_day": {
+    "lamp_power_pct": 0.05003548442366143
+  },
+  "z_thresh": 5.0
+}

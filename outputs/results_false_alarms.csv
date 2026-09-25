@@ -1,0 +1,4 @@
+detector,fa_per_day_clean_runs,fa_per_day_faulty_runs,fa_per_day_clean_runs_noisy,fa_per_day_faulty_runs_noisy
+static_threshold,0.0,0.0,0.0,0.0
+residual_z,0.0,0.0,0.11,0.051333333333333335
+iforest_cusum,0.0,0.006,2.9116666666666666,1.5046666666666666

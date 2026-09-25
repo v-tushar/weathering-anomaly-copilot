@@ -1,0 +1,13 @@
+detector,fault,detection_rate,median_ttd_h,p90_ttd_h,detection_rate_noisy_sensors
+static_threshold,control_fault,1.0,0.3,1.2,1.0
+static_threshold,lamp_degradation,1.0,221.2,259.32000000000005,1.0
+static_threshold,seal_leak,1.0,3.95,5.13,1.0
+static_threshold,sensor_spike,0.74,0.1,0.3,0.74
+residual_z,control_fault,1.0,0.2,0.2,1.0
+residual_z,lamp_degradation,1.0,3.2,3.81,1.0
+residual_z,seal_leak,1.0,2.4,3.0100000000000002,1.0
+residual_z,sensor_spike,1.0,0.1,0.1,1.0
+iforest_cusum,control_fault,1.0,0.2,0.3,1.0
+iforest_cusum,lamp_degradation,1.0,3.2,3.81,1.0
+iforest_cusum,seal_leak,0.08,10.75,11.74,1.0
+iforest_cusum,sensor_spike,0.56,0.0,0.2,0.86
