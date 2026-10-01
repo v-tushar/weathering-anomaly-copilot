@@ -91,11 +91,63 @@ One page that runs the whole pipeline live, for a screen-shared walkthrough:
    ground truth and the rule-based baseline — so the "the rules already get the cause
    right" finding is visible rather than asserted.
 
+4. **Report** for the chamber engineer (see below): what went wrong, whether the running
+   test is affected, what to do, printable.
+5. **Monitor**: guardrail pass rate, human-review rate, latency, tokens, engineer-confirmed
+   accuracy, and the audit trail with its integrity check.
+
 Provider is switchable in the page (Anthropic / OpenAI / offline scripted stand-in);
 providers with no API key set are disabled with a note saying which variable to set.
 A **prompt injection** toggle attaches the malicious operator note, and an **input filter**
 toggle turns the redaction defense off, so the model's own robustness can be shown
-separately from the filter's.
+separately from the filter's. **Evidence up to** chooses what the copilot sees: the first
+12 h after the alert fires (what an engineer paged in real time has) or the whole alert
+(hindsight).
+
+## Incident report for the chamber engineer
+
+The raw diagnosis is for engineers building the system. The person at the chamber gets a
+report (`copilot/report.py`) with two kinds of content, labelled on the page:
+
+| Measured (code, no AI) | AI (shown with its guardrail status) |
+|---|---|
+| Severity: act now / plan maintenance / investigate / monitor / no action | Plain-English explanation |
+| Running-test impact: each controlled condition vs. setpoint ± tolerance, hours out | Recommended steps, chosen from the manual |
+| Lamp headroom and **days until drive hits 100 %** | Test-validity comment |
+| Chart of the affected channels with the tolerance band, cut at the evidence time | |
+
+Manual steps and safety notes ("qualified technician… locked out") are quoted verbatim
+from the cited sections. If the AI answer fails verification, the headline does not
+repeat it; the report says an engineer review is needed and the measured half still stands.
+
+The headroom forecast fits the lamp-drive rate on readings since the alert fired. A
+72 h window that reaches back before the fault mixes healthy and faulty aging; in
+development it forecast 66 days when the lamp actually maxed out in 7. The shipped
+estimate is within about a day of the simulated truth from 6 h after the alert (tested).
+
+## Monitoring, audit trail, feedback
+
+`copilot/audit.py`, standard library only:
+
+- **Every diagnosis is logged** with provider, model, prompt version (content hash),
+  manual version (content hash), detector version, every tool call, guardrail result,
+  tokens and latency. A one-line JSON event also goes to stdout for a log platform.
+- **Tamper-evident:** records are append-only and hash-chained. Editing or deleting a past
+  record breaks verification (tested), and the page shows the chain status.
+- **Engineer feedback** ("was this right? if not, what was it?") is stored as its own audit
+  event. `GET /api/audit/export` returns the rated cases as JSONL, ready to add to the eval set.
+- The monitoring panel shows pass rates, human-review rate, latency p50/p90, tokens per
+  diagnosis, injections caught, engineer-confirmed accuracy and agreement with the rules.
+
+The demo uses SQLite. On the free hosted demo the disk is ephemeral, so the log resets when
+the server restarts. Production would use the same schema in a managed database with
+write-once storage and role-based access.
+
+## CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`) runs lint (ruff) and the full offline test suite
+on every push and pull request. Render deploys only when those checks pass
+(`autoDeployTrigger: checksPass`), so a red build never reaches the live demo.
 
 ## Methodology guarantees (each enforced by a test)
 
@@ -116,7 +168,7 @@ separately from the filter's.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env                # optional: add an API key for the live copilot
-python -m pytest -q                 # 81 tests, ~25 s, fully offline
+python -m pytest -q                 # 96 tests, ~15 s, fully offline
 python -m demo                      # >>> browser demo: the whole pipeline in one page <<<
 python run_demo.py                  # full detector evaluation, ~3 min -> outputs/
 
@@ -137,10 +189,12 @@ weathering_ad/simulator.py   synthetic chamber + fault injection with ground tru
 weathering_ad/detectors.py   static baseline, residual z + CUSUM, Isolation Forest variant, alerting
 weathering_ad/evaluate.py    event-level metrics
 weathering_ad/api.py         FastAPI scoring service with input validation
-copilot/                     LLM copilot: tools, RAG, agent loop, guardrails, eval, CLI
+copilot/                     LLM copilot: tools, RAG, agent loop, guardrails, eval, CLI,
+                             engineer report (report.py), audit trail + monitoring (audit.py)
 demo/                        browser demo UI (FastAPI + one static page, no JS deps)
 run_demo.py                  calibrate -> evaluate -> chart -> save model + metadata
-tests/                       simulator, detectors, evaluation, API
+tests/                       simulator, detectors, evaluation, API, copilot, report, audit, demo server
+.github/workflows/ci.yml     lint + tests on every push; Render deploys only when green
 v1_original/                 first prototype, kept for comparison (has known bugs)
 ```
 

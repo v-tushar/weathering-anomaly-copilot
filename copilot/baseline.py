@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 
+from .kb import section_steps
 from .llm import ToolCall, Turn
 from .tools import CAUSES
 
@@ -62,15 +63,22 @@ def scripted_policy(transcript: list[dict]) -> Turn:
     hits = _last_tool_json(transcript, "search_manual")["results"]
     ch = ctx["alert_channel"]
     info = ctx["channels"][ch]
+    # Actions: the procedure steps of the first retrieved section that has any, verbatim.
+    # That section is always cited, so its safety notes reach the engineer with the steps.
+    src = next((h for h in hits if section_steps(h["text"])), None)
+    steps = section_steps(src["text"]) if src else []
+    cited = list(dict.fromkeys([h["id"] for h in hits[:1]] + ([src["id"]] if src else [])))
     diag = {
         "likely_cause": cause,
         "confidence": "medium",
-        "summary": f"Alert on {ch}. Rule-based classification: {cause}.",
+        "summary": (f"The {ch} alert matches the pattern for {cause.replace('_', ' ')} "
+                    f"(rule-based classification, not a language model). Peak deviation on "
+                    f"{ch} was {info['peak_abs_z_during_alert']} standard deviations."),
         "evidence": [f"{ch} peak |z| during alert was {info['peak_abs_z_during_alert']}",
                      f"{ch} median during alert {info['median_during_alert']} vs baseline "
                      f"{info['baseline_median_prior_24h']}"],
-        "recommended_actions": [f"Follow manual section {hits[0]['id']}."] if hits else [],
-        "citations": [h["id"] for h in hits[:2]],
+        "recommended_actions": steps or ([f"Follow manual section {hits[0]['id']}."] if hits else []),
+        "citations": cited,
         "test_validity_impact": "Check whether exposure conditions left tolerance (GEN-03).",
     }
     return Turn(None, [ToolCall(f"c{n_tool + 1}", "submit_diagnosis", diag)])

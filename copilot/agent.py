@@ -8,6 +8,7 @@ The copilot is advisory. It has read-only tools and cannot change the instrument
 
 from __future__ import annotations
 
+import hashlib
 import time
 from dataclasses import dataclass, field
 from typing import Callable
@@ -45,6 +46,8 @@ Rules:
 """
 
 MAX_STEPS = 8
+# Content hash of the prompt: any wording change gets a new version in the audit log.
+PROMPT_VERSION = hashlib.sha256(SYSTEM_PROMPT.encode()).hexdigest()[:8]
 
 
 @dataclass

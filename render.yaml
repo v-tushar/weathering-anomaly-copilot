@@ -3,6 +3,7 @@ services:
     name: weathering-ai-demo
     runtime: python
     plan: free
+    autoDeployTrigger: checksPass   # deploy only after GitHub Actions CI is green
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn demo.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/meta

@@ -125,6 +125,74 @@
   footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);
     padding-top:14px}
   .mdtable table{margin-bottom:16px}
+  /* incident report */
+  .rp-banner{display:flex;gap:14px;align-items:center;border-radius:8px;padding:12px 16px;
+    border:1px solid var(--line);margin-bottom:14px}
+  .rp-banner .lvl{font-weight:750;font-size:15px;white-space:nowrap;letter-spacing:.01em}
+  .rp-banner.bad{background:#2a0f12;border-color:#7f1d1d}.rp-banner.bad .lvl{color:#fca5a5}
+  .rp-banner.warn{background:#2a1d08;border-color:#78501a}.rp-banner.warn .lvl{color:#fcd34d}
+  .rp-banner.info{background:#0b2233;border-color:#1e4e6e}.rp-banner.info .lvl{color:#7dd3fc}
+  .rp-banner.ok{background:#0d1f14;border-color:#1f5132}.rp-banner.ok .lvl{color:#86efac}
+  .rp-title{font-size:21px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+  .rp-meta{color:var(--muted);font-size:12.5px;margin-bottom:14px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:16px}
+  .tile{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .tile .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+  .tile .v{font-size:18px;font-weight:700;margin-top:3px}
+  .tile .s{font-size:12px;color:var(--muted);margin-top:2px}
+  .tile.good .v{color:#86efac}.tile.badt .v{color:#fca5a5}.tile.warnt .v{color:#fcd34d}
+  .rp-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+  @media (max-width:980px){.rp-cols{grid-template-columns:1fr}}
+  .rp h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    margin:16px 0 7px;font-weight:650;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .rp h3:first-child{margin-top:0}
+  .src{font-size:10px;letter-spacing:.04em;padding:2px 7px;border-radius:999px;font-weight:650;
+    text-transform:none}
+  .src.measured{background:#0b2233;color:#7dd3fc;border:1px solid #1e4e6e}
+  .src.ai{background:#1d1533;color:#c4b5fd;border:1px solid #4c3a85}
+  .src.manual{background:#1a1f12;color:#bef264;border:1px solid #3f5a1a}
+  .src.unverified{background:#2a0f12;color:#fca5a5;border:1px solid #7f1d1d}
+  .aibox{background:#140f24;border:1px solid #33285a;border-radius:8px;padding:11px 13px;margin:0}
+  .facts{margin:0;padding-left:18px}.facts li{margin:4px 0}
+  .checklist{list-style:none;margin:0;padding:0;counter-reset:step}
+  .checklist li{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);
+    border-radius:7px;margin-bottom:6px;background:var(--panel2);counter-increment:step}
+  .checklist li::before{content:counter(step);min-width:22px;height:22px;border-radius:50%;
+    background:#1e2b45;color:var(--fg);font-size:12px;font-weight:700;display:flex;
+    align-items:center;justify-content:center}
+  .checklist input{margin-top:4px;accent-color:var(--ok)}
+  .checklist li.done{opacity:.55;text-decoration:line-through}
+  .safety{border:1px solid #7f1d1d;background:#200d0f;border-radius:7px;padding:9px 12px;margin:8px 0;
+    font-size:13px}
+  .safety b{color:#fca5a5}
+  .exp td.st{font-weight:650}.exp td.st.ok{color:#86efac}.exp td.st.out{color:#fca5a5}
+  .exp td.st.sus{color:#fcd34d}
+  .manual-sec{border:1px solid var(--line);border-radius:7px;padding:7px 11px;margin-bottom:6px;
+    background:var(--panel2)}
+  .manual-sec summary{color:var(--fg);font-size:13px}
+  .manual-sec pre{white-space:pre-wrap;font-family:inherit;font-size:12.5px;color:var(--muted);margin:8px 0 2px}
+  .fb{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);
+    margin-top:18px;padding-top:14px}
+  .fb .q{font-weight:650}
+  button.good{background:#22c55e}button.badb{background:#f87171}
+  .rp-foot{color:var(--muted);font-size:11.5px;margin-top:12px;font-family:var(--mono)}
+  .rchart{width:100%;display:block;background:var(--panel2);border:1px solid var(--line);
+    border-radius:7px;margin-bottom:8px}
+  /* monitoring */
+  .mon-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+  .chain{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+  .chain.ok{color:#86efac;border-color:#1f5132;background:#0d1f14}
+  .chain.bad{color:#fca5a5;border-color:#7f1d1d;background:#2a0f12}
+  .audit td{font-size:12px}.audit td.mono{font-family:var(--mono);font-size:11.5px}
+  @media print{
+    body{background:#fff;color:#111}
+    .wrap > *:not(#reportPanel){display:none !important}
+    #reportPanel{border:0;padding:0;margin:0;background:#fff}
+    .fb,.noprint{display:none !important}
+    .tile,.checklist li,.manual-sec,.rchart,.aibox{background:#fff !important;border-color:#bbb !important}
+    .rp-meta,.rp h3,.tile .k,.tile .s,.rp-foot{color:#444 !important}
+    .manual-sec[open] pre,.manual-sec pre{color:#222}
+  }
 </style>
 </head>
 <body>
@@ -196,6 +264,13 @@
             <label for="model">Model <span class="muted">(optional)</span></label>
             <input type="text" id="model" placeholder="provider default" style="min-width:150px">
           </div>
+          <div class="field">
+            <label for="window" title="What the engineer would have when paged">Evidence up to</label>
+            <select id="window">
+              <option value="12" selected>12 h after alert fires</option>
+              <option value="all">end of alert (hindsight)</option>
+            </select>
+          </div>
           <label class="toggle" title="Attach a malicious operator note that tells the AI to report no fault">
             <input type="checkbox" id="inject"> prompt injection
           </label>
@@ -208,6 +283,20 @@
           Select an alert, then investigate.</p></div>
       </div>
     </div>
+  </div>
+
+  <!-- ACT 4: engineer-facing report ------------------------------------ -->
+  <div class="panel" id="reportPanel">
+    <h2>4 &middot; Incident report for the chamber engineer
+      <span class="hint">plain-English result &middot; measured facts kept apart from the AI's explanation</span></h2>
+    <div id="report"><p class="muted small">Investigate an alert to produce a report.</p></div>
+  </div>
+
+  <!-- ACT 5: monitoring + audit ---------------------------------------- -->
+  <div class="panel" id="monPanel">
+    <h2>5 &middot; Monitoring &amp; audit trail
+      <span class="hint">every diagnosis is logged with its model, prompt, manual and detector versions</span></h2>
+    <div id="mon"><p class="muted small">&mdash;</p></div>
   </div>
 
   <!-- benchmark ---------------------------------------------------------- -->
@@ -271,6 +360,7 @@ async function boot(){
   if (!META.ready){ $("#bootMsg").textContent = "fitting detectors…"; setTimeout(boot, 1500); return; }
   $("#bootMsg").textContent = "";
   run();
+  loadMonitoring();
 }
 
 function paintProviderBadge(){
@@ -455,8 +545,11 @@ function drawAlerts(){
 function diagnose(){
   if (!SEL) return;
   if (ES){ ES.close(); ES = null; }
+  // Default: the evidence an engineer paged in real time would have, 12 h after the alert
+  // fires (samples are 6 min). "Hindsight" uses everything up to the end of the alert.
+  const end = $("#window").value === "all" ? SEL.end : Math.min(SEL.end, SEL.start + 120);
   const q = new URLSearchParams({
-    seed: RUN.seed, start: SEL.start, end: SEL.end, channel: SEL.channel,
+    seed: RUN.seed, start: SEL.start, end: end, channel: SEL.channel,
     faults: chosenFaults().join(","), noise: RUN.noise,
     provider: $("#provider").value, inject: $("#inject").checked,
     redact: $("#redact").checked});
@@ -580,7 +673,218 @@ function renderDone(ev){
       ev.violations.map(v => `<li>${esc(v)}</li>`).join("") + `</ul>
       <p class="small muted">Because these did not clear, the diagnosis is marked
       <b>needs_human_review</b> and would not be shown to an operator as trustworthy.</p>`;
+  if (ev.report)
+    h = `<p style="margin:12px 0"><a href="#reportPanel">&darr; Engineer-facing incident report</a>
+         <span class="muted small">(the raw diagnosis below is the engineering view)</span></p>` + h;
   $("#dg").innerHTML = h;
+  if (ev.report){
+    renderReport(ev);
+    $("#reportPanel").scrollIntoView({behavior: "smooth", block: "start"});
+  }
+  loadMonitoring();
+}
+
+/* ---------- act 4: engineer report ---------- */
+const CAUSE_LABEL = {lamp_degradation:"Lamp / filter degradation",
+  irradiance_sensor_fault:"Irradiance sensor fault", temperature_control_fault:"Temperature control fault",
+  humidity_seal_leak:"Humidity / door seal leak", no_fault_or_false_alarm:"No fault (false alarm)",
+  unknown:"Unknown"};
+const nice = c => CAUSE_LABEL[c] || String(c || "—").replace(/_/g, " ");
+
+function reportChart(s){
+  const W2 = 560, H2 = 150, L = 46, R = 10, T = 22, B = 24;
+  if (!s.v.length) return "";
+  let lo = Math.min(...s.v), hi = Math.max(...s.v);
+  if (s.setpoint != null){ lo = Math.min(lo, s.setpoint - s.tolerance); hi = Math.max(hi, s.setpoint + s.tolerance); }
+  if (hi - lo < 1e-9){ hi += 1; lo -= 1; }
+  const pad = (hi - lo) * .1; lo -= pad; hi += pad;
+  const t0 = Math.min(...s.t_h), t1 = Math.max(...s.t_h, s.alert_end_h);
+  const x = t => L + (t - t0) / ((t1 - t0) || 1) * (W2 - L - R);
+  const y = v => H2 - B - (v - lo) / (hi - lo) * (H2 - T - B);
+  let path = "";
+  s.t_h.forEach((t, i) => path += (i ? "L" : "M") + x(t).toFixed(1) + " " + y(s.v[i]).toFixed(1));
+  let band = "";
+  if (s.setpoint != null){
+    const y1 = y(s.setpoint + s.tolerance), y2 = y(s.setpoint - s.tolerance);
+    band = `<rect x="${L}" y="${y1.toFixed(1)}" width="${W2 - L - R}" height="${(y2 - y1).toFixed(1)}"
+              fill="#22c55e" opacity=".10"/>
+            <line x1="${L}" x2="${W2 - R}" y1="${y(s.setpoint).toFixed(1)}" y2="${y(s.setpoint).toFixed(1)}"
+              stroke="#22c55e" stroke-dasharray="4 4" opacity=".7"/>
+            <text x="${W2 - R}" y="${(y1 - 3).toFixed(1)}" text-anchor="end" font-size="9.5" fill="#86efac">
+              setpoint ${s.setpoint} &plusmn; ${s.tolerance}</text>`;
+  }
+  const marks = [[0, "alert fires"], [s.alert_end_h, "evidence up to"]]
+    .filter(([t], i) => i === 0 || t > 0.5)
+    .map(([t, lab]) => `<line x1="${x(t).toFixed(1)}" x2="${x(t).toFixed(1)}" y1="${T}" y2="${H2 - B}"
+        stroke="#f43f5e" stroke-width="1.4" ${lab === "alert fires" ? "" : 'stroke-dasharray="3 3"'}/>
+      <text x="${(x(t) + 4).toFixed(1)}" y="${T + 9}" font-size="9.5" fill="#fda4af">${lab}</text>`).join("");
+  const yt = [lo + (hi - lo) * .1, hi - (hi - lo) * .1].map(v =>
+    `<text x="${L - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9.5" fill="#8fa3bf"
+       font-family="ui-monospace,monospace">${fmt(v)}</text>`).join("");
+  const xt = [t0, 0, t1].map(t => `<text x="${x(t).toFixed(1)}" y="${H2 - 7}" text-anchor="middle"
+       font-size="9.5" fill="#8fa3bf" font-family="ui-monospace,monospace">${t > 0 ? "+" : ""}${Math.round(t)} h</text>`).join("");
+  return `<svg class="rchart" viewBox="0 0 ${W2} ${H2}" role="img" aria-label="${esc(s.label)} around the alert">
+    <text x="10" y="15" font-size="11" fill="#e6edf7" font-weight="600">${esc(s.label)} (${esc(s.unit)})</text>
+    ${band}${marks}${yt}${xt}
+    <path d="${path}" fill="none" stroke="#7dd3fc" stroke-width="1.6"/></svg>`;
+}
+
+function renderReport(ev){
+  const r = ev.report, ai = r.ai, m = r.measured, v = ev.versions || {};
+  const tone = r.severity.tone;
+  const verified = ai && ai.verified;
+
+  const outRows = m.exposure.filter(e => !e.ok && !e.sensor_suspect);
+  const expTile = m.exposure_ok
+    ? `<div class="tile good"><div class="k">Running test</div><div class="v">In tolerance</div>
+         <div class="s">all controlled conditions held</div></div>`
+    : `<div class="tile badt"><div class="k">Running test</div><div class="v">Out of tolerance</div>
+         <div class="s">${outRows.map(e => `${esc(e.label)} ${e.hours_out} h`).join(" · ")}</div></div>`;
+  const hr = m.lamp_headroom;
+  const lampTile = hr ? `<div class="tile ${hr.headroom_pct < 5 ? "badt" : "warnt"}"><div class="k">Lamp headroom</div>
+       <div class="v">${hr.headroom_pct.toFixed(1)} % left</div>
+       <div class="s">drive at ${hr.drive_pct} %${hr.days_to_max != null
+         ? ` · ~${Math.round(hr.days_to_max * 10) / 10} days to 100 % at ${hr.rate_pct_per_day} %/day` : ""}</div></div>` : "";
+  const aiTile = `<div class="tile ${verified ? "good" : "badt"}"><div class="k">AI diagnosis</div>
+       <div class="v">${esc(ai ? nice(ai.cause) : "none")}</div>
+       <div class="s">${verified ? `verified by guardrails · ${esc(ai.confidence)} confidence`
+                                  : "not verified — engineer review"}</div></div>`;
+  const timeTile = `<div class="tile"><div class="k">Alert</div><div class="v">${esc(r.alert.label)}</div>
+       <div class="s">fired ${esc(r.alert.started.slice(0, 16))} · evidence ${r.alert.hours_since_alert} h</div></div>`;
+
+  const safety = [...new Set(r.manual.flatMap(s => s.safety))];
+  const actions = ai ? ai.actions : [];
+  const ex = m.exposure.map(e => {
+    const st = e.ok ? ["ok", "in tolerance"] : e.sensor_suspect ? ["sus", "sensor reading — not an exposure deviation"]
+                    : ["out", `out for ${e.hours_out} h`];
+    return `<tr><td>${esc(e.label)}</td><td class="num">${e.setpoint} &plusmn; ${e.tolerance}</td>
+      <td class="num">${e.worst ?? "—"}</td><td class="st ${st[0]}">${esc(st[1])}</td></tr>`;
+  }).join("");
+
+  $("#report").innerHTML = `<div class="rp">
+    <div class="rp-banner ${tone}"><span class="lvl">${esc(r.severity.label)}</span>
+      <span>${esc(r.severity.reason)}</span></div>
+    <p class="rp-title">${esc(r.title)}</p>
+    <div class="rp-meta">Chamber X-100 (simulated) · run ${esc(RUN.seed)} · alert on ${esc(r.alert.label)}
+      fired ${esc(r.alert.started)} · evidence up to ${esc(r.alert.as_of)} · report ${esc(ev.audit_id || "—")}</div>
+    <div class="tiles">${timeTile}${expTile}${lampTile}${aiTile}</div>
+
+    <div class="rp-cols">
+      <div>
+        <h3>What happened <span class="src ${verified ? "ai" : "unverified"}">${verified
+          ? "AI explanation · checked against sensor data and manual" : "AI explanation · NOT verified"}</span></h3>
+        <p class="aibox">${esc(ai ? ai.summary : ev.error || "No diagnosis was produced.")}</p>
+        <h3>Why it matters</h3>
+        <p style="margin:0">${esc(r.why_it_matters)}</p>
+        <h3>What we measured <span class="src measured">computed from the sensors · no AI</span></h3>
+        <ul class="facts">${m.facts.map(f => `<li>${esc(f)}</li>`).join("")}
+          ${m.normal_channels.length ? `<li class="muted">Normal: ${m.normal_channels.map(esc).join(", ")}.</li>` : ""}</ul>
+      </div>
+      <div>
+        <h3>Around the alert <span class="src measured">hourly light-phase readings</span></h3>
+        ${m.series.map(reportChart).join("")}
+      </div>
+    </div>
+
+    <div class="rp-cols">
+      <div>
+        <h3>What to do now <span class="src ${verified ? "ai" : "unverified"}">AI-selected steps from the manual</span></h3>
+        ${actions.length ? `<ul class="checklist">${actions.map(a =>
+            `<li><input type="checkbox" class="noprint" aria-label="mark done"><span>${esc(a)}</span></li>`).join("")}</ul>`
+          : `<p class="muted">No actions proposed.</p>`}
+        ${safety.map(s => `<div class="safety"><b>Safety (from the manual):</b> ${esc(s)}</div>`).join("")}
+      </div>
+      <div>
+        <h3>Impact on the running test <span class="src measured">tolerance check · no AI</span></h3>
+        <table class="exp"><thead><tr><th>Condition</th><th style="text-align:right">Setpoint</th>
+          <th style="text-align:right">Worst reading</th><th>Status</th></tr></thead><tbody>${ex}</tbody></table>
+        ${!m.exposure_ok ? `<p class="small" style="margin:8px 0 0">Record which condition deviated, when, for how long
+          and by how much, then notify the test owner (manual section GEN-03).</p>` : ""}
+        ${ai && ai.test_validity ? `<p class="small muted" style="margin:8px 0 0"><span class="src ai">AI</span>
+          ${esc(ai.test_validity)}</p>` : ""}
+      </div>
+    </div>
+
+    <h3>Manual sections cited <span class="src manual">verbatim from the X-100 guide</span></h3>
+    ${r.manual.map(s => `<details class="manual-sec"><summary><b>${esc(s.id)}</b> ${esc(s.title)}</summary>
+        <pre>${esc(s.text)}</pre></details>`).join("") || `<p class="muted">None.</p>`}
+
+    <div class="fb noprint" id="fbBar">
+      <span class="q">Was this diagnosis right?</span>
+      <button class="good" id="fbYes">Yes, correct</button>
+      <span class="muted">or the actual cause was</span>
+      <select id="fbCause">${(META.causes || []).map(c => `<option value="${c}">${esc(nice(c))}</option>`).join("")}</select>
+      <input type="text" id="fbNote" placeholder="optional note" maxlength="500" style="min-width:200px">
+      <button class="badb" id="fbNo">Submit correction</button>
+      <button class="ghost" id="printBtn">Print / save PDF</button>
+      <span class="small" id="fbMsg"></span>
+    </div>
+    <div class="rp-foot">audit ${esc(ev.audit_id || "—")} · model ${esc(v.model || "—")} · prompt v${esc(v.prompt_version || "—")}
+      · manual v${esc(v.kb_version || "—")} · detector ${esc(v.detector_version || "—")} · status ${esc(ev.status)}</div>
+  </div>`;
+
+  document.querySelectorAll(".checklist input").forEach(cb =>
+    cb.onchange = () => cb.closest("li").classList.toggle("done", cb.checked));
+  if (ai && ai.cause) $("#fbCause").value = ai.cause;
+  $("#fbYes").onclick = () => sendFeedback(ev.audit_id, "correct", null);
+  $("#fbNo").onclick = () => sendFeedback(ev.audit_id, "incorrect", $("#fbCause").value);
+  $("#printBtn").onclick = () => window.print();
+}
+
+async function sendFeedback(id, verdict, cause){
+  if (!id) return;
+  const msg = $("#fbMsg");
+  try{
+    const r = await fetch("/api/feedback", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({diagnosis_id: id, verdict, actual_cause: cause, note: $("#fbNote").value})});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || r.status);
+    msg.innerHTML = `<span style="color:#86efac">Saved to the audit trail (event ${esc(j.feedback_id)}).
+      Rated diagnoses become labelled cases for the evaluation set.</span>`;
+    loadMonitoring();
+  }catch(e){ msg.innerHTML = `<span class="err">Could not save: ${esc(e.message || e)}</span>`; }
+}
+
+/* ---------- act 5: monitoring + audit ---------- */
+const pct = x => x == null ? "—" : Math.round(x * 100) + " %";
+async function loadMonitoring(){
+  let d;
+  try{ d = await (await fetch("/api/monitoring")).json(); }catch(e){ return; }
+  const m = d.metrics;
+  const chain = `<span class="chain ${d.chain.ok ? "ok" : "bad"}">${d.chain.ok
+      ? `&#10003; audit chain verified · ${d.chain.n} events` : `&#10007; audit chain broken at event ${d.chain.broken_at_seq}`}</span>`;
+  if (!m.n){
+    $("#mon").innerHTML = `<p class="muted small">No diagnoses logged since ${esc(d.since)}. Investigate an alert. ${chain}</p>`;
+    return;
+  }
+  const tile = (k, v, s, cls = "") => `<div class="tile ${cls}"><div class="k">${k}</div><div class="v">${v}</div>
+      ${s ? `<div class="s">${s}</div>` : ""}</div>`;
+  const rows = d.recent.map(x => `<tr>
+      <td class="mono">${esc(x.ts.slice(11, 19))}</td><td class="mono">${esc(x.id)}</td>
+      <td>${esc(x.alert_channel)}</td><td>${esc(nice(x.likely_cause))}</td>
+      <td class="${x.status === "ok" ? "win" : x.status === "ok_after_retry" ? "" : "lose"}">${esc(x.status)}</td>
+      <td class="mono">${esc(x.model)}</td><td class="mono">${esc(x.prompt_version)} / ${esc(x.kb_version)}</td>
+      <td class="num">${x.latency_s}s</td><td class="num">${x.input_tokens + x.output_tokens}</td>
+      <td>${x.feedback ? (x.feedback.verdict === "correct" ? '<span class="win">&#10003; confirmed</span>'
+                          : `<span class="lose">&#10007; ${esc(nice(x.feedback.actual_cause))}</span>`) : '<span class="muted">—</span>'}</td>
+    </tr>`).join("");
+  $("#mon").innerHTML = `
+    <div class="mon-tiles">
+      ${tile("Diagnoses", m.n, `since ${esc(d.since)}`)}
+      ${tile("Passed guardrails", pct(m.passed_first_try + m.passed_after_retry),
+             `${pct(m.passed_first_try)} first try · ${pct(m.passed_after_retry)} after retry`, "good")}
+      ${tile("Human review", pct(m.needs_human_review), `errors ${pct(m.errors)}`, m.needs_human_review ? "warnt" : "")}
+      ${tile("Engineer-confirmed", pct(m.engineer_confirmed_accuracy), `${m.feedback_n} rated`)}
+      ${tile("Sim. accuracy", pct(m.simulation_accuracy), `vs injected ground truth · rules agree ${pct(m.agreement_with_rule_baseline)}`)}
+      ${tile("Latency", `${m.latency_median_s}s`, `p90 ${m.latency_p90_s}s`)}
+      ${tile("Tokens", m.tokens_total, `${m.tokens_per_diagnosis} per diagnosis`)}
+      ${tile("Injections caught", m.injections_detected, "redacted before the model")}
+    </div>
+    <p style="margin:0 0 10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">${chain}
+      <a href="/api/audit/export" class="small">download engineer-labelled cases (JSONL) for the eval set</a></p>
+    <table class="audit"><thead><tr><th>Time (UTC)</th><th>Audit id</th><th>Channel</th><th>Diagnosis</th>
+      <th>Status</th><th>Model</th><th>Prompt / manual ver.</th><th style="text-align:right">Latency</th>
+      <th style="text-align:right">Tokens</th><th>Engineer feedback</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 /* ---------- tiny markdown table renderer (benchmark panel) ---------- */

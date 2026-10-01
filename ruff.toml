@@ -1,0 +1,5 @@
+# Lint config used by CI (.github/workflows/ci.yml).
+line-length = 120
+
+[lint]
+select = ["E", "F", "W"]

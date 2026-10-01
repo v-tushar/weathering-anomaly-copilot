@@ -18,20 +18,29 @@ Everything is synthetic. No Atlas or customer data is involved.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import queue
+import sys
 import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
-from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse, Response, StreamingResponse
+from pydantic import BaseModel, Field
 
-from copilot.agent import MAX_STEPS, diagnose
+from copilot.agent import MAX_STEPS, PROMPT_VERSION, diagnose
+from copilot.audit import AuditLog
 from copilot.baseline import rule_diagnosis
+from copilot.eval import FAULT_TO_CAUSE
 from copilot.kb import KnowledgeBase
 from copilot.llm import make_llm
+from copilot.report import build_report
 from copilot.tools import CAUSES, ToolSession
+from weathering_ad.api import MODEL_VERSION as DETECTOR_VERSION
 from weathering_ad.detectors import DETECTORS, to_alerts
 from weathering_ad.evaluate import GRACE
 from weathering_ad.simulator import CHANNELS, FAULT_TYPES, ChamberConfig, simulate_run
@@ -41,8 +50,7 @@ CALIB_SEEDS = range(0, 10)          # same healthy calibration runs the shipped 
 SAMPLE_MIN = 6
 MAX_POINTS = 900                    # downsample for the browser; the detector sees every sample
 
-app = FastAPI(title="Weathering chamber AI demo")
-STATE: dict = {"detectors": {}, "kb": None, "ready": False}
+STATE: dict = {"detectors": {}, "kb": None, "audit": None, "ready": False}
 _RUNS: dict = {}                    # (seed, faults, noise) -> (df, truth)
 _LOCK = threading.Lock()
 
@@ -50,7 +58,6 @@ _LOCK = threading.Lock()
 # ---------------------------------------------------------------------------
 # Startup: fit the detectors once on healthy calibration runs (~10 s)
 # ---------------------------------------------------------------------------
-@app.on_event("startup")
 def _warm() -> None:
     print("Fitting detectors on healthy calibration runs...", flush=True)
     calib = [simulate_run(s)[0] for s in CALIB_SEEDS]
@@ -58,8 +65,23 @@ def _warm() -> None:
         STATE["detectors"][name] = D().fit(calib)
         print(f"  fitted {name}", flush=True)
     STATE["kb"] = KnowledgeBase()
+    if STATE["audit"] is None:  # tests inject an in-memory log
+        STATE["audit"] = AuditLog(os.environ.get("AUDIT_DB", "outputs/audit.sqlite"))
+    audit_log = logging.getLogger("copilot.audit")  # structured JSON lines to stdout
+    if not audit_log.handlers:
+        audit_log.addHandler(logging.StreamHandler(sys.stdout))
+        audit_log.setLevel(logging.INFO)
     STATE["ready"] = True
     print("Ready -> http://127.0.0.1:8000", flush=True)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _warm()
+    yield
+
+
+app = FastAPI(title="Weathering chamber AI demo", lifespan=lifespan)
 
 
 def _noisy_cfg(factor: float) -> ChamberConfig:
@@ -172,11 +194,13 @@ def diagnose_stream(seed: int, start: int, end: int, channel: str,
     a single prompt.
     """
     chosen = tuple(f for f in faults.split(",") if f in FAULT_TYPES)
-    df, _ = get_run(seed, chosen, noise)
+    df, truth = get_run(seed, chosen, noise)
     detector = STATE["detectors"]["residual_z"]
     kb = STATE["kb"]
     alert = {"start": start, "end": end, "channel": channel}
     notes = [kb.by_id["FN-02"].text] if inject else None
+    fault = next((f for f in truth if f.start <= start <= f.end + GRACE), None)
+    ground_truth = FAULT_TO_CAUSE[fault.type] if fault else "no_fault_or_false_alarm"
 
     def generate():
         q: queue.Queue = queue.Queue()
@@ -185,15 +209,36 @@ def diagnose_stream(seed: int, start: int, end: int, channel: str,
             try:
                 llm = make_llm(provider, model)
                 ctx = ToolSession(df, detector, alert, kb).get_alert_context()
-                q.put({"type": "context", "context": ctx, "rule_baseline": rule_diagnosis(ctx),
+                rule = rule_diagnosis(ctx)
+                q.put({"type": "context", "context": ctx, "rule_baseline": rule,
                        "max_steps": MAX_STEPS})
                 r = diagnose(llm, df, detector, alert, kb=kb, operator_notes=notes,
                              redact=redact, on_event=q.put)
+                report = build_report(df, alert, ctx, r.diagnosis, r.status, kb)
+                versions = {"model": getattr(llm, "model", llm.name),
+                            "prompt_version": PROMPT_VERSION, "kb_version": kb.version,
+                            "detector_version": DETECTOR_VERSION}
+                audit_id = STATE["audit"].log_diagnosis({
+                    "provider": provider, **versions,
+                    "instrument": "X-100 (simulated)", "run_seed": seed, "faults": list(chosen),
+                    "alert": {"channel": channel, "start": report["alert"]["started"],
+                              "evidence_until": report["alert"]["as_of"]},
+                    "alert_channel": channel,
+                    "status": r.status, "diagnosis": r.diagnosis,
+                    "likely_cause": (r.diagnosis or {}).get("likely_cause"),
+                    "confidence": (r.diagnosis or {}).get("confidence"),
+                    "violations": r.violations, "tool_calls": r.tool_calls, "steps": r.steps,
+                    "latency_s": round(r.latency_s, 2), "input_tokens": r.input_tokens,
+                    "output_tokens": r.output_tokens, "injected": inject, "redact": redact,
+                    "injection_seen": r.injection_seen, "error": r.error,
+                    "rule_baseline": rule, "ground_truth": ground_truth,
+                    "severity": report["severity"]["level"]})
                 q.put({"type": "done", "status": r.status, "diagnosis": r.diagnosis,
                        "violations": r.violations, "steps": r.steps,
                        "tool_calls": r.tool_calls, "latency_s": round(r.latency_s, 2),
                        "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
-                       "injection_seen": r.injection_seen, "error": r.error})
+                       "injection_seen": r.injection_seen, "error": r.error,
+                       "report": report, "audit_id": audit_id, "versions": versions})
             except BaseException as e:  # SystemExit from a missing key must reach the UI too
                 q.put({"type": "done", "status": "error", "diagnosis": None, "violations": [],
                        "steps": 0, "tool_calls": [], "latency_s": 0.0, "input_tokens": 0,
@@ -211,3 +256,40 @@ def diagnose_stream(seed: int, start: int, end: int, channel: str,
 
     return StreamingResponse(generate(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ---------------------------------------------------------------------------
+# Feedback, monitoring and audit export
+# ---------------------------------------------------------------------------
+class Feedback(BaseModel):
+    diagnosis_id: str = Field(max_length=32)
+    verdict: Literal["correct", "incorrect"]
+    actual_cause: str | None = None
+    note: str = Field(default="", max_length=500)
+
+
+@app.post("/api/feedback")
+def feedback(fb: Feedback):
+    """An engineer confirms or corrects a diagnosis. Stored as its own audit event."""
+    if fb.actual_cause is not None and fb.actual_cause not in CAUSES:
+        raise HTTPException(422, f"actual_cause must be one of {CAUSES}")
+    try:
+        fid = STATE["audit"].log_feedback(fb.diagnosis_id, fb.verdict, fb.actual_cause, fb.note)
+    except KeyError:
+        raise HTTPException(404, "unknown diagnosis id") from None
+    return {"feedback_id": fid}
+
+
+@app.get("/api/monitoring")
+def monitoring(limit: int = Query(default=15, ge=1, le=100)):
+    a = STATE["audit"]
+    return {"metrics": a.metrics(), "recent": a.recent(limit), "chain": a.verify(),
+            "since": "server start" if os.environ.get("RENDER") else "audit database creation"}
+
+
+@app.get("/api/audit/export")
+def audit_export():
+    """Engineer-rated diagnoses as JSON Lines: new labelled cases for the eval set."""
+    rows = STATE["audit"].export_labelled()
+    return Response("".join(json.dumps(r) + "\n" for r in rows), media_type="application/x-ndjson",
+                    headers={"Content-Disposition": "attachment; filename=labelled_feedback.jsonl"})

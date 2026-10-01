@@ -3,3 +3,5 @@ __pycache__/
 .pytest_cache/
 .claude-flow/
 *.stackdump
+outputs/audit.sqlite*
+.ruff_cache/
