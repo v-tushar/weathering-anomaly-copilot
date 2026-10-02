@@ -1,5 +1,8 @@
 # Weathering chamber anomaly detection + LLM diagnostic copilot (proof of concept)
 
+[![CI](https://github.com/v-tushar/weathering-anomaly-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/v-tushar/weathering-anomaly-copilot/actions/workflows/ci.yml)
+&nbsp; Live demo: https://weathering-ai-demo.onrender.com
+
 Two layers, built as a self-contained proof of concept on **synthetic data**. No
 Atlas or customer data is used.
 
