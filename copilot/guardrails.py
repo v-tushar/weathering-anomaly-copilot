@@ -60,7 +60,9 @@ def redact_injections(text: str) -> tuple[str, bool]:
 
 def _numbers(text: str) -> list[float]:
     text = re.sub(r"\b[A-Z]+-\d+\b", " ", text)       # section ids like LAMP-02
-    text = re.sub(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?", " ", text)  # timestamps
+    # Dates and clock times are not sensor values: "2026-08-17 22:00:00", "2026-08-17", "22:36".
+    text = re.sub(r"\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?", " ", text)
+    text = re.sub(r"\b\d{1,2}:\d{2}(:\d{2})?\b", " ", text)
     # A '-' right after a digit is a range ("0.545-0.555"), not a minus sign.
     return [float(x) for x in re.findall(r"(?:(?<![\d.])-)?\d+(?:\.\d+)?", text)]
 

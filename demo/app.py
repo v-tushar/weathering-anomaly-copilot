@@ -130,7 +130,7 @@ def meta():
         "detectors": list(DETECTORS),
         "causes": CAUSES,
         "providers": providers,
-        "model": os.environ.get("COPILOT_MODEL", "provider default"),
+        "model": os.environ.get("COPILOT_MODEL") or "provider default",
         "benchmark": results.read_text(encoding="utf-8") if results.exists() else None,
     }
 

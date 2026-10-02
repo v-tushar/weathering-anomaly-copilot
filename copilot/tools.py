@@ -133,8 +133,14 @@ class ToolSession:
             "note_on_z": "z = deviation from a healthy chamber at the same point in the cycle, "
                          "in standard deviations; |z| above 5 is abnormal",
             "channels": channels,
+            # Window lengths are returned as values, not only inside key names, so the model
+            # can say "over the last 72 h" and the grounding check can verify it.
+            "baseline_window_hours": 24,
+            "trend_window_hours": 72,
             "lamp_drive_trend_pct_per_day_last_72h": _r(slope) if np.isfinite(slope) else None,
             "normal_lamp_aging_pct_per_day": _r(self.detector.profile_.aging_per_day_["lamp_power_pct"]),
+            "lamp_drive_trend_times_normal": (_r(slope / self.detector.profile_.aging_per_day_["lamp_power_pct"])
+                                              if np.isfinite(slope) else None),
             "irradiance_setpoint_light": 0.55,
             "rh_setpoint_light_pct": 50.0,
             "chamber_air_setpoint_light_c": 47.0,
@@ -161,6 +167,7 @@ class ToolSession:
         w = w[(w.phase == "light") & (w.t_in_phase_min >= 30)]
         hourly = w.set_index("timestamp")[channel].resample("1h").median().dropna()
         return {"channel": channel, "unit": UNITS[channel],
+                "hours_before": hours_before, "hours_after": hours_after,
                 "alert_start": str(self.df.timestamp[s]),
                 "hourly_median": [{"t": str(t), "v": _r(v)} for t, v in hourly.items()]}
 

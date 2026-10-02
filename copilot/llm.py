@@ -44,10 +44,13 @@ class Turn:
 class AnthropicLLM:
     name = "anthropic"
 
-    def __init__(self, model: str | None = None, max_tokens: int = 1500):
+    # 1500 was too small: a live run truncated submit_diagnosis mid-arguments, which the
+    # schema check rejected and which used up the one retry.
+    def __init__(self, model: str | None = None, max_tokens: int = 4096):
         import anthropic
         self.client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
-        self.model = model or os.environ.get("COPILOT_MODEL", "claude-sonnet-5")
+        # `or`, not a get() default: an empty COPILOT_MODEL= line in .env means "use the default".
+        self.model = model or os.environ.get("COPILOT_MODEL") or "claude-sonnet-5"
         self.max_tokens = max_tokens
 
     def chat(self, system: str, transcript: list[dict], tools: list[dict]) -> Turn:
@@ -82,7 +85,7 @@ class OpenAILLM:
     def __init__(self, model: str | None = None):
         import openai
         self.client = openai.OpenAI()  # reads OPENAI_API_KEY
-        self.model = model or os.environ.get("COPILOT_MODEL", "gpt-4o-mini")
+        self.model = model or os.environ.get("COPILOT_MODEL") or "gpt-4o-mini"
 
     def chat(self, system: str, transcript: list[dict], tools: list[dict]) -> Turn:
         msgs: list[dict] = [{"role": "system", "content": system}]

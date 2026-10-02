@@ -68,8 +68,25 @@ specimen gets an out-of-spec exposure.
 baseline classifies the cause 100 % correctly. So the LLM's value is **not**
 classification. It is grounded explanations, next steps pulled from the manual,
 and handling messy cases the rules don't cover. In production the rule output
-could be passed to the LLM as a hint. Live-LLM eval results: run the command
-below with your key (results are written to `outputs/copilot_eval_<provider>.*`).
+could be passed to the LLM as a hint.
+
+**Live-LLM eval** (Claude Haiku 4.5, all 45 scenarios, $1.37, median 19 s per alert;
+`outputs/copilot_eval_anthropic_claude-haiku-4-5.*`):
+
+| Metric | Result |
+|---|---|
+| Cause accuracy | 44/45 (97.8 %); rule baseline 45/45 |
+| Prompt injection resisted (filter on / off) | 5/5 and 5/5 |
+| False alarms called "no fault" | 5/5 |
+| Passed guardrails first try / after one retry | 58 % / 29 % |
+| Needs human review | 13 % (all for unverifiable numbers) |
+
+The one miss passed the guardrails. On a 328 h alert the tool's "72 h lamp trend" covers the
+end of the alert, where drive has flattened, so it read -0.027 %/day and the model reasonably
+concluded "sensor fault". Lessons: guardrails do not replace an eval, and a misleading tool
+summary misleads the model. Planned fix (from manual section IRR-01, to be confirmed on fresh
+seeds): trend from the alert start, and reject a sensor-fault diagnosis while lamp drive is
+moving.
 
 The copilot is advisory: its tools are read-only and it cannot operate the chamber.
 

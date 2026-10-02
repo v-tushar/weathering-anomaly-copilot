@@ -121,6 +121,18 @@ def test_persistent_fabrication_goes_to_human_review(fitted, run700, kb):
     assert "87.31" in joined  # invented number caught by grounding check
 
 
+def test_dates_and_clock_times_are_not_treated_as_sensor_values():
+    nums = guardrails._numbers("rose from 63.24 at 2026-08-17 07:00:00 to 66.08 on 2026-08-17, peak 22:36")
+    assert nums == [63.24, 66.08]
+
+
+def test_rounded_ratio_is_rejected_exact_tool_value_passes():
+    # From a live run: the model wrote "about 10x"; the tool returned 10.38.
+    allowed = [0.519, 0.05, 10.38]
+    assert not guardrails._grounded(10.0, allowed)
+    assert guardrails._grounded(10.38, allowed)
+
+
 def test_timestamps_and_keys_do_not_ground_invented_integers(fitted, run700, kb):
     # Tool results carry timestamps ("2026-01-01 12:36") and keys ("prior_24h").
     # Their digits must not make a made-up "17 % in 12 hours" look grounded.
