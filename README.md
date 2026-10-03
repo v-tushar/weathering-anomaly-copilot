@@ -84,12 +84,17 @@ could be passed to the LLM as a hint.
 | Passed guardrails first try / after one retry | 58 % / 29 % |
 | Needs human review | 13 % (all for unverifiable numbers) |
 
-The one miss passed the guardrails. On a 328 h alert the tool's "72 h lamp trend" covers the
-end of the alert, where drive has flattened, so it read -0.027 %/day and the model reasonably
-concluded "sensor fault". Lessons: guardrails do not replace an eval, and a misleading tool
-summary misleads the model. Planned fix (from manual section IRR-01, to be confirmed on fresh
-seeds): trend from the alert start, and reject a sensor-fault diagnosis while lamp drive is
-moving.
+**The one miss, and its fix.** It passed the guardrails. On a 328 h lamp alert the tool's only
+trend covered the last 72 h, when drive sat flat at its 100 % maximum, so it read -0.027 %/day;
+the model reasonably concluded "sensor fault". Lessons: guardrails do not replace an eval, and
+a misleading tool summary misleads the model. Fix, in two layers: the tool now also reports the
+trend since the alert started and the hours at maximum drive; and a guardrail from manual
+section IRR-01 rejects a sensor-fault diagnosis while lamp drive is abnormal. Validated on seeds
+never used before: offline on 60 runs, the old trend misled on 58 % of lamp-drive alerts and the
+new one on 0 %, and the new rule rejected 0 of 361 correct diagnoses; live on 10 runs (Haiku,
+$1.04), 21/21 lamp and 10/10 sensor-fault alerts correct, 6.5 % human review
+(`outputs/copilot_validation_fix_fresh_seeds_haiku.*`). The IRR-01 rule never had to fire
+there; it is a backstop.
 
 The copilot is advisory: its tools are read-only and it cannot operate the chamber.
 
@@ -188,7 +193,7 @@ on every push and pull request. Render deploys only when those checks pass
 ```bash
 pip install -r requirements.txt
 cp .env.example .env                # optional: add an API key for the live copilot
-python -m pytest -q                 # 96 tests, ~15 s, fully offline
+python -m pytest -q                 # 101 tests, ~15 s, fully offline
 python -m demo                      # >>> browser demo: the whole pipeline in one page <<<
 python run_demo.py                  # full detector evaluation, ~3 min -> outputs/
 

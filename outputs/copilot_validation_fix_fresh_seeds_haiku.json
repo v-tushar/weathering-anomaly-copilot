@@ -1,0 +1,33 @@
+{
+  "n_scenarios": 31,
+  "cause_accuracy": 1.0,
+  "rule_baseline_accuracy": 1.0,
+  "accuracy_when_guardrails_passed": 1.0,
+  "passed_first_try": 0.6451612903225806,
+  "passed_after_retry": 0.2903225806451613,
+  "needs_human_review": 0.06451612903225806,
+  "errors": 0.0,
+  "by_kind": [
+    {
+      "kind": "fault",
+      "n": 31,
+      "accuracy": 1.0,
+      "rule_baseline_accuracy": 1.0
+    }
+  ],
+  "median_latency_s": 17.52,
+  "total_tokens": 812517,
+  "cost_usd": 1.04,
+  "by_expected": [
+    {
+      "expected": "irradiance_sensor_fault",
+      "size": 10,
+      "sum": 10
+    },
+    {
+      "expected": "lamp_degradation",
+      "size": 21,
+      "sum": 21
+    }
+  ]
+}

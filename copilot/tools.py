@@ -29,7 +29,9 @@ TOOL_SPECS = [
         "name": "get_alert_context",
         "description": ("Summary of the alert under investigation: channel, timing, and for every "
                         "sensor channel the healthy baseline vs. values during the alert, the peak "
-                        "deviation in standard deviations (z), and the lamp drive trend. Call this first."),
+                        "deviation in standard deviations (z), and lamp drive trends: over the first "
+                        "72 h of the alert and over the most recent 72 h, plus hours spent at maximum "
+                        "drive (100 %, when the controller has no headroom left). Call this first."),
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     {
@@ -124,8 +126,19 @@ class ToolSession:
             }
         lamp = df.lamp_power_pct[steady]
         days = (df.timestamp[steady] - df.timestamp.iloc[0]).dt.total_seconds() / 86400
-        recent = days.index[(days.index <= e) & (days.index >= e - 72 * SAMPLES_PER_HOUR)]
-        slope = np.polyfit(days[recent], lamp[recent], 1)[0] if len(recent) > 10 else np.nan
+
+        def lamp_slope(lo: int, hi: int) -> float:
+            idx = days.index[(days.index >= lo) & (days.index <= hi)]
+            return np.polyfit(days[idx], lamp[idx], 1)[0] if len(idx) > 10 else np.nan
+
+        # Two trends, because one can mislead. On a long lamp alert the last 72 h can sit
+        # at 100 % drive (flat, slope ~0) even though the lamp aged 60-100x too fast to get
+        # there. A live run read only that flat trend and called it a sensor fault.
+        slope = lamp_slope(e - 72 * SAMPLES_PER_HOUR, e)
+        since = lamp_slope(s, min(e, s + 72 * SAMPLES_PER_HOUR))
+        normal = self.detector.profile_.aging_per_day_["lamp_power_pct"]
+        light_win = df.iloc[s: e + 1]
+        at_max_h = ((light_win.phase == "light") & (light_win.lamp_power_pct >= 99.5)).sum() / SAMPLES_PER_HOUR
         out = {
             "alert_channel": a["channel"],
             "alert_start": str(df.timestamp[s]),
@@ -137,10 +150,13 @@ class ToolSession:
             # can say "over the last 72 h" and the grounding check can verify it.
             "baseline_window_hours": 24,
             "trend_window_hours": 72,
+            "normal_lamp_aging_pct_per_day": _r(normal),
             "lamp_drive_trend_pct_per_day_last_72h": _r(slope) if np.isfinite(slope) else None,
-            "normal_lamp_aging_pct_per_day": _r(self.detector.profile_.aging_per_day_["lamp_power_pct"]),
-            "lamp_drive_trend_times_normal": (_r(slope / self.detector.profile_.aging_per_day_["lamp_power_pct"])
-                                              if np.isfinite(slope) else None),
+            "lamp_drive_trend_last_72h_times_normal": _r(slope / normal) if np.isfinite(slope) else None,
+            "lamp_drive_trend_pct_per_day_since_alert_start": _r(since) if np.isfinite(since) else None,
+            "lamp_drive_trend_since_alert_start_times_normal": _r(since / normal) if np.isfinite(since) else None,
+            "lamp_drive_max_pct": 100.0,
+            "lamp_drive_at_max_light_hours_during_alert": _r(at_max_h),
             "irradiance_setpoint_light": 0.55,
             "rh_setpoint_light_pct": 50.0,
             "chamber_air_setpoint_light_c": 47.0,

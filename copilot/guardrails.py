@@ -118,6 +118,13 @@ def check_diagnosis(d: dict, *, kb: KnowledgeBase, retrieved_ids: set[str],
         if best < MIN_Z_FOR_CAUSE:
             v.append(f"telemetry_check: {cause} requires a deviation on {CAUSE_CHANNELS[cause]}, "
                      f"but peak |z| there is only {best}")
+    if cause == "irradiance_sensor_fault" and z.get("lamp_power_pct", 0.0) > MAX_Z_FOR_NO_FAULT:
+        # Manual IRR-01: a sensor fault shows "while lamp drive stays steady". If the lamp
+        # itself is abnormal, the sensor explanation contradicts the telemetry. (Live eval
+        # miss, seed 704: a 328 h lamp alert diagnosed as a sensor fault passed every check.)
+        v.append(f"telemetry_check: irradiance_sensor_fault requires steady lamp drive (manual "
+                 f"IRR-01), but lamp_power_pct peak |z| is {z['lamp_power_pct']}; the lamp itself "
+                 f"is changing")
     if cause == "no_fault_or_false_alarm":
         worst = max(z, key=z.get)
         if z[worst] > MAX_Z_FOR_NO_FAULT:

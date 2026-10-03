@@ -121,6 +121,44 @@ def test_persistent_fabrication_goes_to_human_review(fitted, run700, kb):
     assert "87.31" in joined  # invented number caught by grounding check
 
 
+@pytest.fixture(scope="module")
+def run704(fitted):
+    """The live-eval miss: a 328 h lamp alert whose last 72 h sit flat at 100 % drive."""
+    df, truth = simulate_run(704, FAULT_TYPES)
+    return df, next(a for a in to_alerts(fitted["residual_z"].score(df)) if a["channel"] == "lamp_power_pct")
+
+
+def test_alert_context_shows_lamp_ran_out_not_just_a_flat_recent_trend(fitted, run704, kb):
+    df, alert = run704
+    ctx = ToolSession(df, fitted["residual_z"], alert, kb).get_alert_context()
+    normal = ctx["normal_lamp_aging_pct_per_day"]
+    assert ctx["lamp_drive_trend_pct_per_day_last_72h"] < normal          # the misleading view
+    assert ctx["lamp_drive_trend_pct_per_day_since_alert_start"] > 50 * normal
+    assert ctx["lamp_drive_at_max_light_hours_during_alert"] > 24
+
+
+def test_sensor_fault_rejected_while_lamp_drive_is_abnormal(fitted, run704, kb):
+    df, alert = run704
+    s = ToolSession(df, fitted["residual_z"], alert, kb)
+    d = {"likely_cause": "irradiance_sensor_fault", "confidence": "high", "summary": "Sensor offset.",
+         "evidence": [], "recommended_actions": [], "citations": [], "test_validity_impact": ""}
+    v = guardrails.check_diagnosis(d, kb=kb, retrieved_ids=set(), returned_numbers=[],
+                                   context=s.get_alert_context())
+    assert any("IRR-01" in x for x in v)
+
+
+def test_real_sensor_fault_is_still_accepted(fitted, kb):
+    df, truth = simulate_run(3001, FAULT_TYPES)
+    spike = next(f for f in truth if f.type == "sensor_spike")
+    a = next(x for x in to_alerts(fitted["residual_z"].score(df))
+             if x["channel"] == "irradiance" and spike.start <= x["start"] <= spike.end + 10)
+    d = {"likely_cause": "irradiance_sensor_fault", "confidence": "high", "summary": "Sensor glitch.",
+         "evidence": [], "recommended_actions": [], "citations": [], "test_validity_impact": ""}
+    v = guardrails.check_diagnosis(d, kb=kb, retrieved_ids=set(), returned_numbers=[],
+                                   context=ToolSession(df, fitted["residual_z"], a, kb).get_alert_context())
+    assert not any(x.startswith("telemetry_check") for x in v)
+
+
 def test_dates_and_clock_times_are_not_treated_as_sensor_values():
     nums = guardrails._numbers("rose from 63.24 at 2026-08-17 07:00:00 to 66.08 on 2026-08-17, peak 22:36")
     assert nums == [63.24, 66.08]
